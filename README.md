@@ -1,59 +1,108 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Flux Wallet Transfer
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de transferencias entre wallets con registro contable de doble partida, idempotencia y manejo de concurrencia.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Laravel 12
+- PHP 8.4
+- MySQL
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requisitos
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP >= 8.4
+- Composer
+- MySQL
 
-## Learning Laravel
+## Instalación
+```bash
+git clone https://github.com/tu-usuario/flux-wallet-transfer.git
+cd flux-wallet-transfer
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Configura tu base de datos en `.env`:
+```env
+DB_DATABASE=flux_wallet
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Corre las migraciones y el seeder:
+```bash
+php artisan migrate
+php artisan db:seed --class=WalletSeeder
+```
 
-## Laravel Sponsors
+## Correr los tests
+```bash
+php artisan test
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Endpoint
 
-### Premium Partners
+### POST /api/transfers
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Crea una transferencia entre dos wallets.
 
-## Contributing
+**Headers**
+```
+Content-Type: application/json
+Accept: application/json
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Body**
+```json
+{
+    "idempotency_key": "uuid-unico-por-operacion",
+    "source_wallet_id": 1,
+    "destination_wallet_id": 2,
+    "amount": "100.00",
+    "currency": "USD",
+    "description": "Pago de servicio"
+}
+```
 
-## Code of Conduct
+**Respuestas**
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Status | Descripción |
+|--------|-------------|
+| 201 | Transferencia completada |
+| 409 | Saldo insuficiente o conflicto de idempotencia |
+| 422 | Error de validación |
+| 500 | Error inesperado |
 
-## Security Vulnerabilities
+**Ejemplo de respuesta exitosa**
+```json
+{
+    "message": "Transfer completed successfully",
+    "data": {
+        "id": 1,
+        "idempotency_key": "uuid-unico-por-operacion",
+        "source_wallet_id": 1,
+        "destination_wallet_id": 2,
+        "amount": "100.00",
+        "currency": "USD",
+        "description": "Pago de servicio",
+        "status": "COMPLETED",
+        "created_at": "2026-02-19T05:36:54.000000Z",
+        "updated_at": "2026-02-19T05:36:54.000000Z"
+    }
+}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Decisiones técnicas
 
-## License
+**bcmath para precisión financiera** — PHP float acumula errores de punto flotante inaceptables en sistemas financieros. bcmath opera con strings y precisión exacta.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**lockForUpdate() con orden de IDs** — Las wallets se bloquean siempre en orden ascendente de ID para prevenir deadlocks cuando dos requests intentan transferir entre las mismas wallets simultáneamente.
+
+**Idempotencia en 3 capas** — Consulta previa al transaction (fast path), unique constraint en DB y catch de duplicate entry para la race condition exacta.
+
+**Transacción atómica** — Toda la operación ocurre en un DB::transaction(). Si algo falla, rollback automático. Nunca quedan balances a medias.
+
+**Doble partida contable** — Cada transferencia genera un DEBIT en la wallet origen y un CREDIT en la wallet destino, garantizando que el dinero no se crea ni desaparece.
+
+**decimal(18,2) en DB** — Consistente con bcmath. Nunca float para valores monetarios.
