@@ -1,0 +1,54 @@
+### Transferencia exitosa
+POST http://flux-wallet-transfer.test/api/transfers
+Content-Type: application/json
+Accept: application/json
+
+{
+    "idempotency_key": "test-key-001",
+    "source_wallet_id": 1,
+    "destination_wallet_id": 2,
+    "amount": "100.00",
+    "currency": "USD",
+    "description": "Test transfer"
+}
+
+### Saldo insuficiente
+POST http://flux-wallet-transfer.test/api/transfers
+Content-Type: application/json
+Accept: application/json
+
+{
+    "idempotency_key": "test-key-002",
+    "source_wallet_id": 2,
+    "destination_wallet_id": 1,
+    "amount": "9999.00",
+    "currency": "USD",
+    "description": "Test saldo insuficiente"
+}
+
+### Wallets iguales
+POST http://flux-wallet-transfer.test/api/transfers
+Content-Type: application/json
+Accept: application/json
+
+{
+    "idempotency_key": "test-key-003",
+    "source_wallet_id": 1,
+    "destination_wallet_id": 1,
+    "amount": "100.00",
+    "currency": "USD"
+}
+
+### Idempotencia - misma key que test-key-001
+POST http://flux-wallet-transfer.test/api/transfers
+Content-Type: application/json
+Accept: application/json
+
+{
+    "idempotency_key": "test-key-001",
+    "source_wallet_id": 1,
+    "destination_wallet_id": 2,
+    "amount": "100.00",
+    "currency": "USD",
+    "description": "Test transfer"
+}
