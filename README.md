@@ -95,14 +95,14 @@ Accept: application/json
 
 ## Decisiones técnicas
 
-**bcmath para precisión financiera** — PHP float acumula errores de punto flotante inaceptables en sistemas financieros. bcmath opera con strings y precisión exacta.
+**bcmath** — Float en PHP no es exacto. Uso bcmath con strings y precisión definida.
 
-**lockForUpdate() con orden de IDs** — Las wallets se bloquean siempre en orden ascendente de ID para prevenir deadlocks cuando dos requests intentan transferir entre las mismas wallets simultáneamente.
+**lockForUpdate() ordenando IDs** — El lock evita doble débito en requests simultáneos. Ordenar los IDs previene deadlocks.
 
-**Idempotencia en 3 capas** — Consulta previa al transaction (fast path), unique constraint en DB y catch de duplicate entry para la race condition exacta.
+**Idempotencia en 3 capas** — Check previo, unique constraint en DB y catch del error de duplicado para cubrir la race condition.
 
-**Transacción atómica** — Toda la operación ocurre en un DB::transaction(). Si algo falla, rollback automático. Nunca quedan balances a medias.
+**DB::transaction()** — Si algo falla a mitad, rollback automático. Nunca balances a medias.
 
-**Doble partida contable** — Cada transferencia genera un DEBIT en la wallet origen y un CREDIT en la wallet destino, garantizando que el dinero no se crea ni desaparece.
+**Doble partida en ledger** — Un DEBIT y un CREDIT por transferencia. El dinero no se crea ni desaparece.
 
-**decimal(18,2) en DB** — Consistente con bcmath. Nunca float para valores monetarios.
+**decimal(18,2)** — Mismo principio que bcmath. Float en DB también acumula errores.
