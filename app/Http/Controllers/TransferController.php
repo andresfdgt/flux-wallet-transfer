@@ -28,13 +28,13 @@ class TransferController extends Controller
                 'data' => $transfer,
             ], 201);
         } catch (IdempotencyConflictException $e) {
-            return response()->json(['error' => $e->getMessage()], 409);
+            return response()->json(['message' => $e->getMessage()], 409);
         } catch (InsufficientFundsException $e) {
-            return response()->json(['error' => $e->getMessage()], 409);
+            return response()->json(['message' => $e->getMessage()], 409);
         } catch (InvalidArgumentException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['message' => 'An unexpected error occurred'], 500);
         }
     }
 }
