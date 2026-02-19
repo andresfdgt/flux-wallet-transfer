@@ -7,7 +7,6 @@ use App\Exceptions\InsufficientFundsException;
 use App\Http\Requests\TransferRequest;
 use App\Services\TransferService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use InvalidArgumentException;
 
 class TransferController extends Controller
